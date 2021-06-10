@@ -16,6 +16,7 @@ SET_KEY = "set"
 state = {}
 DEBUG = 0
 
+
 def save_state():
     with open(STATE_PATH, 'wb') as f:
         pickle.dump(state, f)
@@ -85,17 +86,25 @@ def start_program(program):
         sys.exit(0)
 
 
-def choose_window_id(f):
+def choose_window_id(f, focused_wid):
     if f not in state: return None
-    window_id = state[f][DEQUE_KEY].popleft()
-    state[f][DEQUE_KEY].append(window_id)
+    if focused_wid in state[f][SET_KEY]:
+        window_id = state[f][DEQUE_KEY].popleft()
+        state[f][DEQUE_KEY].append(window_id)
+    else:
+        window_id = state[f][DEQUE_KEY][-1]
     return window_id
 
 
 def switch_focus(window_id):
+    if not window_id: return
     cmd = 'wmctrl -i -a {}'.format(hex(window_id))
     subprocess.call(shlex.split(cmd))
 
+
+def get_focused_window_id():
+    cmd = 'xdotool getwindowfocus'
+    return int(subprocess.check_output(shlex.split(cmd)))
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
@@ -104,7 +113,8 @@ if __name__ == '__main__':
     window_filter = sys.argv[1]
     load_state()
     get_windows(window_filter)
-    wid = choose_window_id(window_filter)
+    focused_wid = get_focused_window_id()
+    wid = choose_window_id(window_filter, focused_wid)
     DEBUG and print("new wid " + str(wid))
     switch_focus(wid)
     save_state()
